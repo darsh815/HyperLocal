@@ -1,0 +1,13 @@
+{
+  "name": "leftover-lab-functions",
+  "private": true,
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "firebase-functions": "^7.0.0"
+  }
+}

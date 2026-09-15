@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "195160031342",
+    "project_id": "leftoverlab-76ed0",
+    "storage_bucket": "leftoverlab-76ed0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:195160031342:android:67642790e364ca64b2667f",
+        "android_client_info": {
+          "package_name": "com.example.nexus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "195160031342-jtk6l12rsfvfk91ds1v9a8al4f7777v7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.nexus",
+            "certificate_hash": "4e9b7eb2b9e31a3a81eb93c841246453c447fa3b"
+          }
+        },
+        {
+          "client_id": "195160031342-s1418vmn8bf7t6u94au056feh4kp84ak.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKsXD_9aWmSdipuOCb7YK9hNOnDOSmmRs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "195160031342-s1418vmn8bf7t6u94au056feh4kp84ak.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
