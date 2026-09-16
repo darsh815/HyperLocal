@@ -1,223 +1,132 @@
-# nexus
+# Nexus
 
-## Cloud AI recipes
+Nexus is a Flutter recipe app that turns available ingredients into recipes,
+recognizes ingredients from camera images, and syncs saved recipes with
+Firebase.
 
-The app calls a backend endpoint when `AI_RECIPE_ENDPOINT` is supplied. Keep
-the model API key on that backend, never in the Flutter application.
+## Requirements
 
-The endpoint accepts:
+- Flutter SDK and Dart
+- Node.js 20 or newer for the AI server
+- Android Studio and an Android device or emulator
+- A Firebase project with Authentication and Firestore enabled
+- A Gemini API key for recipe generation and camera recognition
 
-```json
-{"ingredients":["Rice","Eggs","Spinach"]}
-```
+## Run The App
 
-and returns:
-
-```json
-{
-	"title":"Green Egg Rice",
-	"subtitle":"A quick bowl built from your pantry.",
-	"time":"15 min",
-	"steps":["...", "...", "...", "..."]
-}
-```
-
-Ingredient recognition uses the same backend and Gemini key. If the recipe URL
-ends in `/recipes`, the app automatically uses its sibling `/recognize` route.
-An explicit recognition URL can also be supplied:
+From the repository root:
 
 ```powershell
-flutter run `
-	--dart-define=AI_RECIPE_ENDPOINT=http://192.168.1.10:8081/recipes `
-	--dart-define=AI_RECOGNIZE_ENDPOINT=http://192.168.1.10:8081/recognize
+flutter pub get
+flutter run
 ```
 
-The camera sends a compressed image to `/recognize`; the backend returns
-`{"ingredients":["Tomatoes","Onion"]}`. Those items are added to the
-selected ingredient list and are used by the normal recipe generator.
+Without an AI endpoint, the app uses its built-in offline recipe generator.
 
-### Use the cloud backend on a physical Android phone
+## Local AI Server
 
-The repository includes a Firebase HTTPS deployment as well as the optional
-Cloud Run deployment below. Firebase is the simplest route for this project:
-
-The Firebase project must be upgraded to the Blaze plan first because HTTPS
-Functions and Secret Manager are not available on the Spark plan. Upgrade it
-at the Firebase usage page, then run:
-
-```powershell
-npx firebase-tools functions:secrets:set GEMINI_API_KEY --project leftoverlab-76ed0
-npx firebase-tools deploy --only functions --project leftoverlab-76ed0
-```
-
-Type the Gemini key directly into the secret prompt. The deployed API URL is:
-`https://us-central1-leftoverlab-76ed0.cloudfunctions.net/api`. Set that URL in
-`NEXUS_AI_ENDPOINT` only when launching manually; the checked-in cloud Android
-launch profile already points to this URL.
-
-Deploy the `server/` folder to Cloud Run. The Gemini key stays in Cloud Run and
-is never included in the Android app. From the repository root, install and
-authenticate the Google Cloud CLI, then run:
-
-```powershell
-gcloud auth login
-gcloud config set project leftoverlab-76ed0
-gcloud run deploy nexus-recipe-api `
-	--source server `
-	--region us-central1 `
-	--allow-unauthenticated `
-	--set-env-vars GEMINI_MODEL=gemini-2.5-flash `
-	--set-env-vars GEMINI_API_KEY=YOUR_GEMINI_KEY
-```
-
-Copy the HTTPS URL printed by Cloud Run and set it once in PowerShell:
-
-```powershell
-$env:NEXUS_AI_ENDPOINT = "https://YOUR_SERVICE_URL.run.app"
-```
-
-Then connect the Android phone normally with Flutter or use the VS Code
-profile **Nexus Android phone + Cloud AI**. No USB port forwarding is needed;
-the phone calls the cloud `/recipes` and `/recognize` endpoints directly.
-
-For a release APK, pass the same cloud URL when building:
-
-```powershell
-flutter build apk --release `
-	--dart-define=AI_RECIPE_ENDPOINT=https://YOUR_SERVICE_URL.run.app/recipes
-```
-
-The app automatically derives `/recognize` from the `/recipes` URL. You can
-override it with `AI_RECOGNIZE_ENDPOINT` if the routes are hosted separately.
-
-Run the app against any already deployed function or service with:
-
-```powershell
-flutter run --dart-define=AI_RECIPE_ENDPOINT=https://your-service.example.com/recipes
-```
-
-If the endpoint is omitted or unavailable, the app generates an offline recipe
-instead.
-
-### Deploy the included backend
-
-The `server/` folder contains a Node.js API that keeps `GEMINI_API_KEY` on the
-server. For local testing:
+The server keeps `GEMINI_API_KEY` out of the Flutter app. Create the local
+environment file and set the key directly in it:
 
 ```powershell
 cd server
 Copy-Item .env.example .env
-# Edit .env and set GEMINI_API_KEY to your Gemini key
+# Edit .env and set GEMINI_API_KEY
 npm install
+$env:PORT = '8081'
+$env:HOST = '0.0.0.0'
 npm start
 ```
 
-In a second terminal:
+The server exposes `GET /health`, `POST /recipes`, and `POST /recognize`.
+
+## Camera AI Over USB
+
+With the local server running on port `8081`, connect an Android phone with USB
+debugging enabled:
 
 ```powershell
-flutter run --dart-define=AI_RECIPE_ENDPOINT=http://localhost:8081/recipes
-```
-
-For local USB development only, reverse the API port before launching. The
-phone can then use `127.0.0.1` because Android forwards that port to this
-computer:
-
-```powershell
+adb devices
 adb reverse tcp:8081 tcp:8081
 flutter run -d <android-device-id> `
-	--dart-define=AI_RECIPE_ENDPOINT=http://127.0.0.1:8081/recipes
+  --dart-define=AI_RECIPE_ENDPOINT=http://127.0.0.1:8081/recipes `
+  --dart-define=AI_RECOGNIZE_ENDPOINT=http://127.0.0.1:8081/recognize
 ```
 
-In VS Code, use **Nexus Flutter + local AI server** after running `adb reverse`.
-For Wi-Fi, use the computer's IPv4 address instead of `127.0.0.1`; the checked-
-in launch profile uses the current development address `10.84.237.96`.
+`adb reverse` lets the phone reach the development computer through
+`127.0.0.1`. In VS Code, use **Nexus local development (USB)** after starting
+the server and running the reverse command.
 
-For a physical Android phone connected to the same Wi-Fi, find this PC's IPv4
-address with `ipconfig`, then use that address instead of `localhost`:
+For Wi-Fi development, replace `127.0.0.1` with the computer's local IPv4
+address:
 
 ```powershell
-flutter run --dart-define=AI_RECIPE_ENDPOINT=http://192.168.1.10:8081/recipes
+flutter run `
+  --dart-define=AI_RECIPE_ENDPOINT=http://192.168.1.10:8081/recipes `
+  --dart-define=AI_RECOGNIZE_ENDPOINT=http://192.168.1.10:8081/recognize
 ```
 
-Allow the development port through Windows Firewall once if the phone cannot
-connect:
+## Firebase
 
-```powershell
-New-NetFirewallRule -DisplayName "Nexus Recipe API" -Direction Inbound -Protocol TCP -LocalPort 8081 -Action Allow
+Firebase Authentication and Firestore store accounts and saved recipes. Each
+user's recipes are stored at:
+
+```text
+users/{firebase-auth-uid}/recipes/{recipe-id}
 ```
 
-For Google Cloud Run, from the `server` folder:
+Email/password and Google sign-in use the Firebase Auth UID, so Google users'
+recipes are stored in the same secure per-user collection. The app repairs a
+missing user profile when a session is restored or a recipe is read or saved.
 
-```powershell
-gcloud run deploy nexus-recipe-api --source . --region us-central1 --allow-unauthenticated --set-env-vars GEMINI_MODEL=gemini-2.5-flash --set-env-vars GEMINI_API_KEY=YOUR_NEW_KEY
-```
-
-Use the service URL printed by Cloud Run as `AI_RECIPE_ENDPOINT`. For
-production, prefer a secret manager instead of passing the key directly in
-the deploy command.
-
-### Firebase accounts, recipe history, and live admin insights
-
-Firebase Authentication and Firestore are the only account and history store.
-Saved recipes live at `users/{uid}/recipes`; the admin dashboard listens to
-Firestore snapshots, so its metrics update immediately as users and recipes
-change. To grant dashboard access, set the Firebase custom claim `admin: true`
-(or `role: admin`) on the administrator�s Auth user, then have them sign in
-again. Deploy `firestore.rules` before using admin insights.
-
-The Node service is only a Gemini proxy. It keeps `GEMINI_API_KEY` private and
-returns the requested-language recipe plus an AI-generated tutorial search
-query. The app opens that query as a YouTube search rather than trusting an
-AI-invented third-party URL.
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-
-## Android debug build
-
-## Firebase authentication and Firestore
-
-The Android Firebase project for this app is `leftoverlab-76ed0`. The checked-in
-Firestore rules let an authenticated user create and access only their own
-`users/{uid}` profile and `users/{uid}/recipes` history. This covers both
-email/password registration and Google sign-in because both flows create a
-Firebase Auth user before writing to Firestore.
-
-In the Firebase console for this project, enable these providers under
-**Authentication > Sign-in method**:
+Enable these Firebase Authentication providers:
 
 - Email/Password
 - Google
 
-For Google sign-in on Android, add the SHA-1 (and preferably SHA-256) of every
-debug/release signing certificate to the Android app with package name
-`com.example.nexus`, then download the updated `google-services.json` into
-`android/app/`.
-
-Deploy the included rules after signing in to the Firebase CLI:
+For Android Google sign-in, add debug and release SHA-1/SHA-256 certificates
+to the Firebase Android app. Deploy Firestore rules with:
 
 ```powershell
-npx firebase-tools@latest login
-npx firebase-tools@latest deploy --only firestore:rules --project leftoverlab-76ed0
+npx firebase-tools login
+npx firebase-tools deploy --only firestore:rules --project leftoverlab-76ed0
 ```
 
-Do not use test-mode rules in production: they would let unrelated users read
-or change other users' saved recipes.
+The admin dashboard uses a Firestore collection-group query for all recipe
+subcollections. Admin access requires the Firebase custom claim `admin: true`
+or `role: admin` and the deployed rules in `firestore.rules`.
 
-For a physical device, replace the example IP with this PC's current Wi-Fi IPv4 address. Firebase Authentication and Firestore handle login and recipe history.
+## Firebase AI Function
+
+`functions/index.js` provides the same `/recipes` and `/recognize` routes as the
+local server. Deployment requires the Blaze plan, an active billing account,
+and the `GEMINI_API_KEY` Firebase secret:
 
 ```powershell
-flutter build apk --debug `
-  --dart-define=AI_RECIPE_ENDPOINT=http://192.168.1.10:8081/recipes `
- 
+npm --prefix functions install
+npx firebase-tools functions:secrets:set GEMINI_API_KEY --project leftoverlab-76ed0
+npx firebase-tools deploy --only functions:api --project leftoverlab-76ed0
+```
+
+The deployed API base URL is:
+
+```text
+https://us-central1-leftoverlab-76ed0.cloudfunctions.net/api
+```
+
+Launch against Firebase with:
+
+```powershell
+flutter run `
+  --dart-define=AI_RECIPE_ENDPOINT=https://us-central1-leftoverlab-76ed0.cloudfunctions.net/api/recipes `
+  --dart-define=AI_RECOGNIZE_ENDPOINT=https://us-central1-leftoverlab-76ed0.cloudfunctions.net/api/recognize
+```
+
+Never commit `.env` files, Gemini keys, or other credentials.
+
+## Tests And Analysis
+
+```powershell
+dart analyze
+flutter test
 ```
