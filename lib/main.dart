@@ -550,8 +550,20 @@ class _RecipeHomePageState extends State<RecipeHomePage> {
           .where((saved) => saved.id == null)
           .toList();
       for (final saved in localRecipes) {
-        await _accountService.saveRecipe(session.token, saved.toJson());
+        final documentId = await _accountService.saveRecipe(
+          session.token,
+          saved.toJson(),
+        );
+        final index = _savedRecipes.indexOf(saved);
+        if (index != -1) {
+          _savedRecipes[index] = SavedRecipe(
+            id: documentId,
+            recipe: saved.recipe,
+            savedAt: saved.savedAt,
+          );
+        }
       }
+      await _persistSavedRecipes();
       final recipes = await _accountService.loadHistory(session.token);
       if (!mounted) return;
       setState(() {

@@ -32,6 +32,7 @@ class AccountService {
       await FirebaseAuth.instance.signOut();
       return null;
     }
+    await _ensureUserProfile(user);
     return _firebaseSession(user);
   }
 
@@ -64,6 +65,7 @@ class AccountService {
       final user = credential.user;
       if (user == null) throw Exception('Firebase did not return an account.');
       await _ensureNotBanned(user);
+      await _ensureUserProfile(user);
       return await _firebaseSession(user);
     } on FirebaseAuthException catch (error) {
       throw Exception(error.message ?? 'Unable to sign in to Firebase.');
@@ -106,6 +108,7 @@ class AccountService {
 
   Future<List<Map<String, dynamic>>> loadHistory(String token) async {
     final user = _currentUser();
+    await _ensureUserProfile(user);
     final snapshots = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -125,6 +128,7 @@ class AccountService {
 
   Future<String> saveRecipe(String token, Map<String, dynamic> recipe) async {
     final user = _currentUser();
+    await _ensureUserProfile(user);
     final document = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -157,7 +161,9 @@ class AccountService {
     if (_usesFirebase) await FirebaseAuth.instance.signOut();
   }
 
-  Future<void> _createUserProfile(User user) =>
+  Future<void> _createUserProfile(User user) => _ensureUserProfile(user);
+
+  Future<void> _ensureUserProfile(User user) =>
       FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'email': user.email,
         'createdAt': FieldValue.serverTimestamp(),

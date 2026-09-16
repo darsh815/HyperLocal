@@ -492,7 +492,7 @@ class _AdminPageState extends State<AdminPage> {
         .map((item) => item['count'] as int)
         .fold(1, (max, value) => value > max ? value : max);
     return SizedBox(
-      height: 118,
+      height: 132,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -508,7 +508,7 @@ class _AdminPageState extends State<AdminPage> {
               const SizedBox(height: 4),
               Container(
                 width: 24,
-                height: 16 + (count / maxValue * 72),
+                height: 16 + (count / maxValue * 64),
                 decoration: BoxDecoration(
                   color: const Color(0xFF6C8752),
                   borderRadius: BorderRadius.circular(8),

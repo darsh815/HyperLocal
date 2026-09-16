@@ -22,5 +22,11 @@ service cloud.firestore {
         allow read, create, update, delete: if signedIn() && request.auth.uid == userId || isAdmin();
       }
     }
+
+    // Collection-group queries need a recursive match in addition to the
+    // user-scoped rule above. Only admins can query every user's recipes.
+    match /{path=**}/recipes/{recipeId} {
+      allow read: if isAdmin();
+    }
   }
 }
